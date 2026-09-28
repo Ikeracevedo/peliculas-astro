@@ -20,10 +20,14 @@ let consulta = supabaseServer
 	.range(from, to)
 
 if (q) {
-	consulta = consulta.like('nombre',`%${q}%`);
+	consulta = consulta.ilike('nombre', `%${q}%`);
 }
 
 const { data: peliculas, count, error } = await consulta;
+
+if (error?.code === 'PGRST103') {
+  return Astro.redirect(q ? `/?q=${encodeURIComponent(q)}` : '/');
+}
 
 const total = count ?? 0;
 const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
