@@ -1,17 +1,80 @@
 ---
+import Layout from '../layouts/Layout.astro'
+import { supabaseServer } from '../lib/supabase-server';
+
+export const prerender = false;
+
+const PAGE_SIZE = 6;
+
+const q = Astro.url.searchParams.get('q')?.trim() ?? '';
+const pageParam = Number(Astro.url.searchParams.get('page'));
+const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;
+
+const from = (page - 1) * PAGE_SIZE;
+const to = from + PAGE_SIZE - 1;
+
+let consulta = supabaseServer
+	.from('peliculas')
+	.select('id, nombre, imagen, estreno', { count: 'exact'})
+	.order('nombre')
+	.range(from, to)
+
+if (q) {
+	consulta = consulta.like('nombre',`%${q}%`);
+}
+
+const { data: peliculas, count, error } = await consulta;
+
+const total = count ?? 0;
+const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+const enlace = (p: number) => {
+	const params = new URLSearchParams();
+	if(q) params.set('q', q);
+	params.set('page', String(p));
+	return `/?${params.toString()}`; 
+}
 
 ---
-
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Layout title="Catálogo | CineVault">
+	<section class="mx-auto max-w-6xl px-6 py-10">
+	  <h1 class="mb-6 text-3xl font-bold">Catálogo de películas</h1>
+  
+	  <form method="get" class="mb-8 flex gap-3">
+		<input
+		  type="search"
+		  name="q"
+		  value={q}
+		  placeholder="Buscar por nombre..."
+		  class="flex-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-2"
+		/>
+		<button type="submit" class="rounded-lg bg-[#a855f7] px-5 py-2 font-medium text-white">
+		  Buscar
+		</button>
+	  </form>
+  
+	  {error && <p class="text-red-400">No se pudo cargar el catálogo.</p>}
+  
+	  {!error && peliculas && peliculas.length === 0 && (
+		<p class="text-gray-400">No hay películas para esta búsqueda o página.</p>
+	  )}
+  
+	  <ul class="grid grid-cols-2 gap-6 md:grid-cols-3">
+		{peliculas?.map((p) => (
+		  <li class="overflow-hidden rounded-lg bg-[#1a1a1a]">
+			<img src={p.imagen} alt={p.nombre} class="aspect-[2/3] w-full object-cover" />
+			<div class="p-3">
+			  <h2 class="font-semibold">{p.nombre}</h2>
+			  <p class="text-sm text-gray-400">{p.estreno ?? 's/f'}</p>
+			</div>
+		  </li>
+		))}
+	  </ul>
+  
+	  <nav class="mt-10 flex items-center justify-center gap-4">
+		{page > 1 && <a href={enlace(page - 1)} class="hover:text-white">← Anterior</a>}
+		<span class="text-gray-400">Página {page} de {totalPaginas}</span>
+		{page < totalPaginas && <a href={enlace(page + 1)} class="hover:text-white">Siguiente →</a>}
+	  </nav>
+	</section>
+  </Layout>
