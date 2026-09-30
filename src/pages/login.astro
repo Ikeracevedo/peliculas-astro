@@ -1,0 +1,78 @@
+---
+export const prerender = true;
+---
+
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Ingresar | CineVault</title>
+  </head>
+  <body class="min-h-screen bg-[#121212] text-gray-200 flex items-center justify-center">
+    <section class="w-full max-w-md p-8 bg-[#1a1a1a] rounded-2xl shadow-xl border border-[#2a2a2a]">
+      <a href="/" class="block text-center text-2xl font-bold text-[#a855f7] mb-6">CineVault</a>
+      <h1 class="text-xl font-semibold mb-6 text-center">Iniciar sesión</h1>
+
+      <form id="loginForm" class="flex flex-col gap-4">
+        <label class="flex flex-col gap-1">
+          <span class="text-sm text-gray-400">Correo electrónico</span>
+          <input
+            type="email"
+            name="email"
+            required
+            class="rounded-lg border border-[#2a2a2a] bg-[#0e0e0e] px-4 py-2 focus:outline-none focus:border-[#a855f7]"
+          />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-sm text-gray-400">Contraseña</span>
+          <input
+            type="password"
+            name="password"
+            required
+            class="rounded-lg border border-[#2a2a2a] bg-[#0e0e0e] px-4 py-2 focus:outline-none focus:border-[#a855f7]"
+          />
+        </label>
+        <button
+          type="submit"
+          class="rounded-lg bg-[#a855f7] hover:bg-[#c084fc] transition-colors px-5 py-2 font-medium text-white"
+        >
+          Ingresar
+        </button>
+      </form>
+
+      <p id="message" class="mt-4 text-center text-sm"></p>
+
+      <p class="mt-6 text-center text-sm text-gray-500">
+        ¿No tienes cuenta? <a href="/registro" class="text-[#a855f7] hover:underline">Regístrate</a>
+      </p>
+    </section>
+
+    <script type="module">
+      import { supabase } from '/src/lib/supabase-browser.ts';
+
+      const form = document.getElementById('loginForm');
+      const messageEl = document.getElementById('message');
+
+      // Si ya hay sesión activa, redirige directo al admin
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) window.location.href = '/admin';
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        messageEl.textContent = '';
+        const email = form.email.value;
+        const password = form.password.value;
+
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+          messageEl.textContent = error.message;
+          messageEl.className = 'mt-4 text-center text-sm text-red-400';
+        } else {
+          window.location.href = '/admin';
+        }
+      });
+    </script>
+  </body>
+</html>
