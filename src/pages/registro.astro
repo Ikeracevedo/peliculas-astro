@@ -1,0 +1,51 @@
+// src/pages/registro.astro
+---
+export const prerender = true;
+import { supabase } from "../lib/supabase-browser";
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Registro | CineVault</title>
+  <link rel="stylesheet" href="/src/styles/global.css" />
+</head>
+<body class="bg-[#1a1a1a] text-white">
+  <section class="max-w-md mx-auto mt-10 p-6 bg-[#2a2a2a] rounded-lg shadow-lg">
+    <h1 class="text-2xl font-bold mb-4">Crear cuenta</h1>
+    <form id="registroForm" class="flex flex-col gap-4">
+      <label class="flex flex-col">
+        <span class="mb-1">Correo electrónico</span>
+        <input type="email" name="email" required class="rounded px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a]" />
+      </label>
+      <label class="flex flex-col">
+        <span class="mb-1">Contraseña</span>
+        <input type="password" name="password" required minlength="6" class="rounded px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a]" />
+      </label>
+      <button type="submit" class="bg-[#a855f7] hover:bg-[#c084fc] text-white py-2 rounded">Registrarse</button>
+    </form>
+    <p id="message" class="mt-4 text-center"></p>
+  </section>
+
+  <script type="module">
+    const form = document.getElementById('registroForm');
+    const messageEl = document.getElementById('message');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = form.email.value;
+      const password = form.password.value;
+      try {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        messageEl.textContent = 'Registro exitoso. Revisa tu correo para confirmar la cuenta.';
+        messageEl.className = 'text-green-500';
+      } catch (err) {
+        console.error(err);
+        messageEl.textContent = err.message || 'Error al registrar';
+        messageEl.className = 'text-red-400';
+      }
+    });
+  </script>
+</body>
+</html>
