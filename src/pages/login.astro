@@ -1,18 +1,12 @@
 ---
 export const prerender = true;
+import Layout from '../layouts/Layout.astro';
 ---
 
-<html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Ingresar | CineVault</title>
-  </head>
-  <body class="min-h-screen bg-[#121212] text-gray-200 flex items-center justify-center">
-    <section class="w-full max-w-md p-8 bg-[#1a1a1a] rounded-2xl shadow-xl border border-[#2a2a2a]">
-      <a href="/" class="block text-center text-2xl font-bold text-[#a855f7] mb-6">CineVault</a>
-      <h1 class="text-xl font-semibold mb-6 text-center">Iniciar sesión</h1>
+<Layout title="Ingresar | CineVault">
+  <section class="flex min-h-[80vh] items-center justify-center px-6">
+    <div class="w-full max-w-md rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-8 shadow-xl">
+      <h1 class="mb-6 text-center text-xl font-semibold">Iniciar sesión</h1>
 
       <form id="loginForm" class="flex flex-col gap-4">
         <label class="flex flex-col gap-1">
@@ -41,38 +35,46 @@ export const prerender = true;
         </button>
       </form>
 
-      <p id="message" class="mt-4 text-center text-sm"></p>
+      <p id="loginMsg" class="mt-4 text-center text-sm"></p>
 
       <p class="mt-6 text-center text-sm text-gray-500">
-        ¿No tienes cuenta? <a href="/registro" class="text-[#a855f7] hover:underline">Regístrate</a>
+        ¿No tienes cuenta?{' '}
+        <a href="/registro" class="text-[#a855f7] hover:underline">Regístrate</a>
       </p>
-    </section>
+    </div>
+  </section>
+</Layout>
 
-    <script type="module">
-      import { supabase } from '/src/lib/supabase-browser.ts';
+<script>
+  import { supabase } from '../lib/supabase-browser';
 
-      const form = document.getElementById('loginForm');
-      const messageEl = document.getElementById('message');
+  async function init() {
+    // Si ya hay sesión, redirige directo al admin
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      window.location.href = '/admin';
+      return;
+    }
 
-      // Si ya hay sesión activa, redirige directo al admin
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) window.location.href = '/admin';
+    const form = document.getElementById('loginForm') as HTMLFormElement | null;
+    const msgEl = document.getElementById('loginMsg');
+    if (!form || !msgEl) return;
 
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        messageEl.textContent = '';
-        const email = form.email.value;
-        const password = form.password.value;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msgEl.textContent = '';
+      const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+      const password = (form.elements.namedItem('password') as HTMLInputElement).value;
 
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        msgEl.textContent = error.message;
+        msgEl.className = 'mt-4 text-center text-sm text-red-400';
+      } else {
+        window.location.href = '/admin';
+      }
+    });
+  }
 
-        if (error) {
-          messageEl.textContent = error.message;
-          messageEl.className = 'mt-4 text-center text-sm text-red-400';
-        } else {
-          window.location.href = '/admin';
-        }
-      });
-    </script>
-  </body>
-</html>
+  document.addEventListener('astro:page-load', init);
+</script>
