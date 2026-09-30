@@ -65,12 +65,14 @@ const enlace = (p: number) => {
   
 	  <ul class="grid grid-cols-2 gap-6 md:grid-cols-3">
 		{peliculas?.map((p) => (
-		  <li class="overflow-hidden rounded-lg bg-[#1a1a1a]">
-			<img src={p.imagen} alt={p.nombre} class="aspect-[2/3] w-full object-cover" />
-			<div class="p-3">
-			  <h2 class="font-semibold">{p.nombre}</h2>
-			  <p class="text-sm text-gray-400">{p.estreno ?? 's/f'}</p>
-			</div>
+		  <li class="overflow-hidden rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] transition-transform hover:-translate-y-1 hover:border-[#a855f7]/50">
+			<a href={`/peliculas/${p.id}`} class="block">
+			  <img src={p.imagen} alt={p.nombre} class="aspect-[2/3] w-full object-cover" />
+			  <div class="p-3">
+				<h2 class="font-semibold leading-tight">{p.nombre}</h2>
+				<p class="text-sm text-gray-400">{p.estreno ?? 's/f'}</p>
+			  </div>
+			</a>
 		  </li>
 		))}
 	  </ul>

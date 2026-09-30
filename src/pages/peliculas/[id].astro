@@ -1,0 +1,62 @@
+---
+export const prerender = false; // SSR — renderizado en el edge en cada petición
+
+import Layout from '../../layouts/Layout.astro';
+import { supabaseServer } from '../../lib/supabase-server';
+
+const { id } = Astro.params;
+
+if (!id || isNaN(Number(id))) {
+  return Astro.redirect('/');
+}
+
+const { data: pelicula, error } = await supabaseServer
+  .from('peliculas')
+  .select('id, nombre, imagen, sinopsis, estreno')
+  .eq('id', Number(id))
+  .single();
+
+if (error || !pelicula) {
+  return Astro.redirect('/');
+}
+---
+
+<Layout title={`${pelicula.nombre} | CineVault`}>
+  <section class="mx-auto max-w-4xl px-6 py-12">
+    <a href="/" class="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white mb-8 transition-colors">
+      ← Volver al catálogo
+    </a>
+
+    <div class="flex flex-col gap-8 sm:flex-row">
+      <!-- Poster -->
+      <div class="shrink-0">
+        <img
+          src={pelicula.imagen}
+          alt={pelicula.nombre}
+          class="w-full max-w-[260px] rounded-2xl object-cover shadow-2xl mx-auto"
+        />
+      </div>
+
+      <!-- Info -->
+      <div class="flex flex-col gap-4">
+        <div>
+          <h1 class="text-3xl font-bold leading-tight">{pelicula.nombre}</h1>
+          {pelicula.estreno && (
+            <span class="mt-2 inline-block rounded-full bg-[#a855f7]/20 px-3 py-0.5 text-sm font-medium text-[#a855f7]">
+              {pelicula.estreno}
+            </span>
+          )}
+        </div>
+
+        {pelicula.sinopsis ? (
+          <div>
+            <h2 class="mb-2 text-sm font-semibold uppercase tracking-widest text-gray-500">Sinopsis</h2>
+            <p class="leading-relaxed text-gray-300">{pelicula.sinopsis}</p>
+          </div>
+        ) : (
+          <p class="text-gray-500 italic">Sin sinopsis disponible.</p>
+        )}
+      </div>
+    </div>
+  </section>
+</Layout>
