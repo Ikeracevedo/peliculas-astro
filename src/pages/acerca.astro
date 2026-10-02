@@ -1,0 +1,129 @@
+---
+export const prerender = true;
+import Layout from '../layouts/Layout.astro';
+
+const equipo = [
+  {
+    nombre: 'Iker Acevedo',
+    rol: 'Arquitectura & Cloudflare Workers',
+    avatar: 'https://api.dicebear.com/9.x/initials/svg?seed=IA&backgroundColor=a855f7&fontFamily=Arial',
+  },
+  {
+    nombre: 'Tu Compañero',
+    rol: 'Frontend & Supabase',
+    avatar: 'https://api.dicebear.com/9.x/initials/svg?seed=TC&backgroundColor=a855f7&fontFamily=Arial',
+  },
+];
+
+const tecnologias = [
+  { nombre: 'Astro 5', desc: 'Framework con arquitectura híbrida SSR + SSG', color: 'text-orange-400' },
+  { nombre: 'Cloudflare Workers', desc: 'Serverless en el edge, sin Cold Start', color: 'text-yellow-400' },
+  { nombre: 'Supabase', desc: 'Base de datos PostgreSQL + Auth + RLS', color: 'text-green-400' },
+  { nombre: 'Tailwind CSS v4', desc: 'Estilos utility-first con plugin de Vite', color: 'text-sky-400' },
+];
+---
+
+<Layout title="Acerca de | CineVault">
+  <section class="mx-auto max-w-4xl px-6 py-14 space-y-16">
+
+    <!-- Hero -->
+    <div class="text-center space-y-4">
+      <h1 class="text-4xl font-bold">
+        Acerca de <span class="text-[#a855f7]">CineVault</span>
+      </h1>
+      <p class="mx-auto max-w-2xl text-gray-400 text-lg leading-relaxed">
+        CineVault es un catálogo de películas construido como proyecto académico para demostrar
+        una <strong class="text-white">arquitectura híbrida real</strong>: páginas estáticas
+        generadas en build time (SSG) combinadas con rutas dinámicas renderizadas en el edge (SSR),
+        todo desplegado sobre <strong class="text-white">Cloudflare Workers</strong>.
+      </p>
+    </div>
+
+    <!-- Arquitectura -->
+    <div>
+      <h2 class="mb-6 text-2xl font-bold">🏗️ Arquitectura híbrida</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6 space-y-2">
+          <span class="inline-block rounded-full bg-green-900/40 px-3 py-0.5 text-xs font-medium text-green-400">
+            SSG — Estático
+          </span>
+          <h3 class="font-semibold">Páginas pre-renderizadas</h3>
+          <ul class="text-sm text-gray-400 space-y-1 list-disc list-inside">
+            <li><code>/acerca</code> — Esta página</li>
+            <li><code>/registro</code> — Formulario de registro</li>
+            <li><code>/login</code> — Inicio de sesión</li>
+            <li><code>/admin</code> — Panel de gestión</li>
+          </ul>
+          <p class="text-xs text-gray-500 pt-2">
+            Generadas en build time con <code>export const prerender = true</code>.
+            Servidas como assets estáticos desde la CDN de Cloudflare.
+          </p>
+        </div>
+        <div class="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6 space-y-2">
+          <span class="inline-block rounded-full bg-blue-900/40 px-3 py-0.5 text-xs font-medium text-blue-400">
+            SSR — Dinámico
+          </span>
+          <h3 class="font-semibold">Rutas en el edge</h3>
+          <ul class="text-sm text-gray-400 space-y-1 list-disc list-inside">
+            <li><code>/</code> — Catálogo con búsqueda y paginación</li>
+            <li><code>/peliculas/[id]</code> — Detalle de película</li>
+          </ul>
+          <p class="text-xs text-gray-500 pt-2">
+            Renderizadas en cada petición por Cloudflare Workers.
+            Permiten búsqueda en tiempo real y mostrar detalles sin JavaScript extra en el cliente.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tecnologías -->
+    <div>
+      <h2 class="mb-6 text-2xl font-bold">⚡ Tecnologías</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
+        {tecnologias.map(t => (
+          <div class="flex gap-4 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5 items-start">
+            <div class="flex-1">
+              <p class={`font-semibold ${t.color}`}>{t.nombre}</p>
+              <p class="text-sm text-gray-400 mt-1">{t.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Equipo -->
+    <div>
+      <h2 class="mb-6 text-2xl font-bold">👥 Equipo</h2>
+      <div class="flex flex-wrap gap-6 justify-center sm:justify-start">
+        {equipo.map(m => (
+          <div class="flex flex-col items-center gap-3 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] px-8 py-6 w-44 text-center">
+            <img src={m.avatar} alt={m.nombre} class="h-16 w-16 rounded-full" />
+            <div>
+              <p class="font-semibold text-sm">{m.nombre}</p>
+              <p class="text-xs text-gray-400 mt-1">{m.rol}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Repositorio -->
+    <div class="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
+      <div>
+        <h3 class="font-semibold">Repositorio</h3>
+        <p class="text-sm text-gray-400 mt-1">
+          Código fuente disponible en GitHub bajo la rama <code class="text-[#a855f7]">feature/ssg</code>.
+        </p>
+      </div>
+      <a
+        href="https://github.com/Ikeracevedo/peliculas-astro"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="shrink-0 rounded-lg bg-[#a855f7] hover:bg-[#c084fc] transition-colors px-5 py-2 font-medium text-white text-sm"
+      >
+        Ver en GitHub →
+      </a>
+    </div>
+
+  </section>
+</Layout>

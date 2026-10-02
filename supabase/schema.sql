@@ -15,9 +15,8 @@ create policy "peliculas_select_publico"
     using (true);
 
 create policy "peliculas_insert_autenticado"
-    on public.peliculas for update
+    on public.peliculas for insert
     to authenticated
-    using (true)
     with check (true);
 
 create policy "peliculas_update_autenticado"

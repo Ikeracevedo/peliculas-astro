@@ -21,11 +21,18 @@ const { title } = Astro.props;
   <body class="min-h-screen bg-[#121212] text-gray-200">
     <header class="flex items-center justify-between border-b border-[#2a2a2a] px-6 py-4">
       <a href="/" class="text-xl font-bold text-[#a855f7]">CineVault</a>
-      <nav class="flex gap-6 text-sm">
+      <nav class="flex items-center gap-6 text-sm">
         <a href="/" class="hover:text-white">Catálogo</a>
         <a href="/acerca" class="hover:text-white">Acerca de</a>
-        <a href="/admin" class="hover:text-white">Admin</a>
-        <a href="/login" class="hover:text-white">Ingresar</a>
+        <!-- Estos se muestran/ocultan según la sesión -->
+        <a id="nav-admin" href="/admin" class="hidden hover:text-white">Admin</a>
+        <a id="nav-login" href="/login" class="hover:text-white">Ingresar</a>
+        <button
+          id="nav-logout"
+          class="hidden rounded-lg border border-[#a855f7] px-3 py-1 text-[#a855f7] hover:bg-[#a855f7] hover:text-white transition-colors"
+        >
+          Cerrar sesión
+        </button>
       </nav>
     </header>
     <main>
@@ -33,3 +40,33 @@ const { title } = Astro.props;
     </main>
   </body>
 </html>
+
+<script>
+  import { supabase } from '../lib/supabase-browser';
+
+  async function actualizarNav() {
+    const navAdmin  = document.getElementById('nav-admin');
+    const navLogin  = document.getElementById('nav-login');
+    const navLogout = document.getElementById('nav-logout');
+    if (!navAdmin || !navLogin || !navLogout) return;
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session) {
+      navAdmin.classList.remove('hidden');
+      navLogin.classList.add('hidden');
+      navLogout.classList.remove('hidden');
+    } else {
+      navAdmin.classList.add('hidden');
+      navLogin.classList.remove('hidden');
+      navLogout.classList.add('hidden');
+    }
+
+    navLogout.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    });
+  }
+
+  document.addEventListener('astro:page-load', actualizarNav);
+</script>

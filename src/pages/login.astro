@@ -1,0 +1,80 @@
+---
+export const prerender = true;
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Ingresar | CineVault">
+  <section class="flex min-h-[80vh] items-center justify-center px-6">
+    <div class="w-full max-w-md rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-8 shadow-xl">
+      <h1 class="mb-6 text-center text-xl font-semibold">Iniciar sesión</h1>
+
+      <form id="loginForm" class="flex flex-col gap-4">
+        <label class="flex flex-col gap-1">
+          <span class="text-sm text-gray-400">Correo electrónico</span>
+          <input
+            type="email"
+            name="email"
+            required
+            class="rounded-lg border border-[#2a2a2a] bg-[#0e0e0e] px-4 py-2 focus:outline-none focus:border-[#a855f7]"
+          />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-sm text-gray-400">Contraseña</span>
+          <input
+            type="password"
+            name="password"
+            required
+            class="rounded-lg border border-[#2a2a2a] bg-[#0e0e0e] px-4 py-2 focus:outline-none focus:border-[#a855f7]"
+          />
+        </label>
+        <button
+          type="submit"
+          class="rounded-lg bg-[#a855f7] hover:bg-[#c084fc] transition-colors px-5 py-2 font-medium text-white"
+        >
+          Ingresar
+        </button>
+      </form>
+
+      <p id="loginMsg" class="mt-4 text-center text-sm"></p>
+
+      <p class="mt-6 text-center text-sm text-gray-500">
+        ¿No tienes cuenta?{' '}
+        <a href="/registro" class="text-[#a855f7] hover:underline">Regístrate</a>
+      </p>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  import { supabase } from '../lib/supabase-browser';
+
+  async function init() {
+    // Si ya hay sesión, redirige directo al admin
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      window.location.href = '/admin';
+      return;
+    }
+
+    const form = document.getElementById('loginForm') as HTMLFormElement | null;
+    const msgEl = document.getElementById('loginMsg');
+    if (!form || !msgEl) return;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msgEl.textContent = '';
+      const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+      const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        msgEl.textContent = error.message;
+        msgEl.className = 'mt-4 text-center text-sm text-red-400';
+      } else {
+        window.location.href = '/admin';
+      }
+    });
+  }
+
+  document.addEventListener('astro:page-load', init);
+</script>
