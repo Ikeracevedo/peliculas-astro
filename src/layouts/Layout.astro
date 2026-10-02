@@ -38,35 +38,34 @@ const { title } = Astro.props;
     <main>
       <slot />
     </main>
+    <script>
+      import { supabase } from '../lib/supabase-browser';
+
+      async function actualizarNav() {
+        const navAdmin  = document.getElementById('nav-admin');
+        const navLogin  = document.getElementById('nav-login');
+        const navLogout = document.getElementById('nav-logout');
+        if (!navAdmin || !navLogin || !navLogout) return;
+
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session) {
+          navAdmin.classList.remove('hidden');
+          navLogin.classList.add('hidden');
+          navLogout.classList.remove('hidden');
+        } else {
+          navAdmin.classList.add('hidden');
+          navLogin.classList.remove('hidden');
+          navLogout.classList.add('hidden');
+        }
+
+        navLogout.addEventListener('click', async () => {
+          await supabase.auth.signOut();
+          window.location.href = '/login';
+        });
+      }
+
+      document.addEventListener('astro:page-load', actualizarNav);
+    </script>
   </body>
 </html>
-
-<script>
-  import { supabase } from '../lib/supabase-browser';
-
-  async function actualizarNav() {
-    const navAdmin  = document.getElementById('nav-admin');
-    const navLogin  = document.getElementById('nav-login');
-    const navLogout = document.getElementById('nav-logout');
-    if (!navAdmin || !navLogin || !navLogout) return;
-
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (session) {
-      navAdmin.classList.remove('hidden');
-      navLogin.classList.add('hidden');
-      navLogout.classList.remove('hidden');
-    } else {
-      navAdmin.classList.add('hidden');
-      navLogin.classList.remove('hidden');
-      navLogout.classList.add('hidden');
-    }
-
-    navLogout.addEventListener('click', async () => {
-      await supabase.auth.signOut();
-      window.location.href = '/login';
-    });
-  }
-
-  document.addEventListener('astro:page-load', actualizarNav);
-</script>

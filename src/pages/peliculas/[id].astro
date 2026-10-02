@@ -314,14 +314,14 @@ const promedio = listaResenas.length > 0
         }
       } else {
         // ─── Crear reseña nueva ──────────────────────────────────────────
-        const userEmail = session?.user?.email ?? '';
+        // user_id y user_email NO se envían: los rellena la base de datos desde el JWT
+        // (auth.uid() / auth.jwt()), así nadie puede firmar una reseña como otra persona.
         const { error } = await supabase
           .from('resenas')
           .insert({
             pelicula_id: peliculaId,
             comentario,
             calificacion: cal,
-            user_email: userEmail,
           });
 
         if (error) {

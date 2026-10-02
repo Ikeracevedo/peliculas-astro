@@ -36,7 +36,9 @@
 - 🧭 **Buscar por nombre** (sin distinguir mayúsculas) y **paginar** los resultados; ambos se resuelven en el servidor.
 - 👤 **Registrarte e iniciar sesión** con Supabase Auth.
 - 🛠️ **Administrar el catálogo** (crear, editar y eliminar películas) desde un panel que exige sesión activa.
+- 🎬 Ver el **detalle de cada película** y leer sus **reseñas** (con calificación de 1 a 5 estrellas); con sesión, escribir, editar y borrar las propias.
 - ℹ️ Consultar la página pública **"Acerca de"** con la información del proyecto.
+
 ---
 
 ## Tecnologías
@@ -100,12 +102,18 @@ peliculas-astro/
 │   │   ├── supabase-server.ts   # Cliente sin sesión, para leer datos públicos en SSR
 │   │   └── supabase-browser.ts  # Cliente del navegador, con sesión (Auth y CRUD)
 │   ├── pages/
-│   │   └── index.astro       # Listado público SSR con búsqueda y paginación
+│   │   ├── index.astro            # Listado público SSR con búsqueda y paginación
+│   │   ├── peliculas/[id].astro   # Detalle + reseñas (SSR)
+│   │   ├── acerca.astro           # SSG
+│   │   ├── registro.astro         # SSG
+│   │   ├── login.astro            # SSG
+│   │   └── admin/index.astro      # CRUD de películas (SSG, datos desde el navegador)
 │   └── styles/
 │       └── global.css        # Tailwind
 ├── supabase/
-│   ├── schema.sql            # Tabla peliculas + políticas RLS
-│   └── seed.sql              # 20 películas de ejemplo
+│   ├── schema.sql            # Tablas peliculas y resenas + políticas RLS
+│   ├── seed.sql              # 20 películas de ejemplo
+│   └── patch-resenas-email.sql  # Parche para bases creadas con la versión anterior de resenas
 ├── astro.config.mjs          # output: 'server' + adaptador de Cloudflare + Tailwind
 ├── wrangler.jsonc            # Configuración del Worker de Cloudflare
 ├── .env.example              # Variables de entorno necesarias (sin valores)
@@ -119,6 +127,7 @@ peliculas-astro/
 | Ruta | Render | Acceso | Descripción |
 |---|---|---|---|
 | `/` | SSR | Público | Catálogo con búsqueda `?q=` y paginación `?page=` |
+| `/peliculas/:id` | SSR | Público (reseñar requiere sesión) | Detalle de la película y sus reseñas |
 | `/acerca` | SSG | Público | Información del proyecto y del equipo |
 | `/registro` | SSG | Público | Crear cuenta |
 | `/login` | SSG | Público | Iniciar sesión |
@@ -160,6 +169,21 @@ La tabla tiene **Row Level Security activado**. Políticas actuales:
 > **Por qué la anon key puede ser pública:** la anon key solo identifica una petición como "anónima". No abre nada por sí sola: todo lo que puede hacer lo define RLS. Por eso se incluye en el código del navegador sin comprometer los datos.
 
 > **Limitación conocida:** con las políticas actuales, cualquier usuario registrado puede modificar el catálogo. Es más débil que el rol `ADMIN` del Taller #1. Endurecerlo con un rol en `app_metadata` está identificado como mejora.
+
+### Tabla `resenas`
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `id` | `bigint` identity | Clave primaria |
+| `pelicula_id` | `bigint` | FK a `peliculas`, `on delete cascade` |
+| `user_id` | `uuid` | Por defecto `auth.uid()`: lo pone la base, no el cliente |
+| `user_email` | `text` | Por defecto el correo del JWT; la política rechaza cualquier otro valor |
+| `comentario` | `text` | Entre 1 y 1000 caracteres |
+| `calificacion` | `smallint` | Entre 1 y 5 |
+
+RLS: lectura pública; crear, editar y borrar **solo el autor** (`auth.uid() = user_id`). Como `user_id` y `user_email` salen del JWT, nadie puede publicar una reseña a nombre de otra persona.
+
+> **Sanitización:** el panel `/admin` construye el DOM con `textContent` (no `innerHTML`), porque cualquier usuario autenticado puede crear películas y el contenido se muestra a los demás: así se evita XSS almacenado. En las páginas Astro, `{variable}` ya escapa el HTML.
 
 La llave `service_role` de Supabase **nunca** se usa en este proyecto ni debe subirse al repositorio.
 
@@ -254,7 +278,8 @@ curl -s "https://peliculas-astro.ikeracevedo.workers.dev/?q=the" | grep -o '<h2 
 - **`ilike` en la búsqueda:** `LIKE` distingue mayúsculas; `ILIKE` no. PostgREST envía el valor como parámetro, así que no hay inyección SQL.
 - **Paginación por `range` (offset):** con un catálogo pequeño es simple y suficiente. Para catálogos muy grandes convendría paginación por cursor (*keyset*).
 - **Esquema en `snake_case` y plural:** convención SQL estándar (`peliculas`, `creada_en`). Cambia respecto al Taller #1 (`creadaEn`).
-- **Reseñas fuera de alcance:** el enunciado pide el CRUD de un solo modelo; las reseñas del Taller #1 no se migraron.
+- **Reseñas como extra:** el enunciado pide el CRUD de un solo modelo (`peliculas`). Las reseñas se añadieron como continuación natural del Taller #1; son un extra y no sustituyen ningún requisito.
+- **Seguridad en la base de datos, no en el cliente:** `user_id` y `user_email` los fija Postgres desde el JWT y las políticas RLS rechazan valores ajenos; el frontend no es de confianza.
 
 ---
 

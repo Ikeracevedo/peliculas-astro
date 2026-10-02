@@ -187,38 +187,52 @@ import Layout from '../../layouts/Layout.astro';
       }
       listaMsg.classList.add('hidden');
 
-      lista.innerHTML = peliculas.map(p => `
-        <div class="flex flex-col overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a]">
-          <img
-            src="${p.imagen}"
-            alt="${p.nombre}"
-            class="aspect-[2/3] w-full object-cover"
-            onerror="this.src='https://placehold.co/300x450/1a1a1a/555?text=Sin+imagen'"
-          />
-          <div class="flex flex-1 flex-col gap-2 p-3">
-            <h3 class="text-sm font-semibold leading-tight">${p.nombre}</h3>
-            <p class="text-xs text-gray-400">${p.estreno ?? 's/f'}</p>
-            <div class="mt-auto flex gap-2">
-              <button
-                data-id="${p.id}"
-                class="btn-editar flex-1 rounded-md bg-[#2a2a2a] px-3 py-1.5 text-xs transition-colors hover:bg-[#3a3a3a]"
-              >Editar</button>
-              <button
-                data-id="${p.id}"
-                data-nombre="${p.nombre}"
-                class="btn-eliminar flex-1 rounded-md bg-red-900/50 px-3 py-1.5 text-xs transition-colors hover:bg-red-700"
-              >Eliminar</button>
-            </div>
-          </div>
-        </div>
-      `).join('');
+      // Los datos de las películas los escribe cualquier usuario autenticado, así que
+      // se construyen los nodos con textContent / propiedades del DOM y NO con
+      // innerHTML: el navegador trata el valor como texto, nunca como HTML (evita XSS).
+      lista.replaceChildren(...peliculas.map(crearTarjeta));
+    }
 
-      lista.querySelectorAll<HTMLButtonElement>('.btn-editar').forEach(btn => {
-        btn.addEventListener('click', () => abrirEdicion(Number(btn.dataset.id)));
-      });
-      lista.querySelectorAll<HTMLButtonElement>('.btn-eliminar').forEach(btn => {
-        btn.addEventListener('click', () => confirmarEliminar(Number(btn.dataset.id), btn.dataset.nombre ?? ''));
-      });
+    function crearTarjeta(p: (typeof peliculas)[number]): HTMLElement {
+      const tarjeta = document.createElement('div');
+      tarjeta.className = 'flex flex-col overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a]';
+
+      const img = document.createElement('img');
+      img.alt = p.nombre;
+      img.className = 'aspect-[2/3] w-full object-cover';
+      img.addEventListener('error', () => {
+        img.src = 'https://placehold.co/300x450/1a1a1a/555?text=Sin+imagen';
+      }, { once: true });
+      img.src = p.imagen;
+
+      const cuerpo = document.createElement('div');
+      cuerpo.className = 'flex flex-1 flex-col gap-2 p-3';
+
+      const titulo = document.createElement('h3');
+      titulo.className = 'text-sm font-semibold leading-tight';
+      titulo.textContent = p.nombre;
+
+      const anio = document.createElement('p');
+      anio.className = 'text-xs text-gray-400';
+      anio.textContent = String(p.estreno ?? 's/f');
+
+      const acciones = document.createElement('div');
+      acciones.className = 'mt-auto flex gap-2';
+
+      const btnEditar = document.createElement('button');
+      btnEditar.className = 'flex-1 rounded-md bg-[#2a2a2a] px-3 py-1.5 text-xs transition-colors hover:bg-[#3a3a3a]';
+      btnEditar.textContent = 'Editar';
+      btnEditar.addEventListener('click', () => abrirEdicion(p.id));
+
+      const btnEliminar = document.createElement('button');
+      btnEliminar.className = 'flex-1 rounded-md bg-red-900/50 px-3 py-1.5 text-xs transition-colors hover:bg-red-700';
+      btnEliminar.textContent = 'Eliminar';
+      btnEliminar.addEventListener('click', () => confirmarEliminar(p.id, p.nombre));
+
+      acciones.append(btnEditar, btnEliminar);
+      cuerpo.append(titulo, anio, acciones);
+      tarjeta.append(img, cuerpo);
+      return tarjeta;
     }
 
     // ─── Formulario crear / editar ──────────────────────────────────────────

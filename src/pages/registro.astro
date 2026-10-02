@@ -54,11 +54,15 @@ import Layout from '../layouts/Layout.astro';
       const email = (form.elements.namedItem('email') as HTMLInputElement).value;
       const password = (form.elements.namedItem('password') as HTMLInputElement).value;
 
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) {
         messageEl.textContent = error.message;
         messageEl.className = 'mt-4 text-center text-sm text-red-400';
+      } else if (data.session) {
+        // "Confirm email" desactivado en Supabase: signUp ya devuelve sesión activa.
+        window.location.href = '/admin';
       } else {
+        // "Confirm email" activado: la cuenta existe pero falta confirmar el correo.
         messageEl.textContent = 'Registro exitoso. Revisa tu correo para confirmar la cuenta.';
         messageEl.className = 'mt-4 text-center text-sm text-green-400';
       }

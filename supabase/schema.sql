@@ -35,7 +35,7 @@ create table public.resenas (
     id bigint generated always as identity primary key,
     pelicula_id bigint not null references public.peliculas(id) on delete cascade,
     user_id uuid not null default auth.uid(),
-    user_email text not null default '',
+    user_email text not null default coalesce(auth.jwt() ->> 'email', ''),
     comentario text not null check (char_length(comentario) between 1 and 1000),
     calificacion smallint not null check (calificacion between 1 and 5),
     creada_en timestamptz not null default now()
@@ -49,17 +49,25 @@ create policy "resenas_select_publico"
     to anon, authenticated
     using (true);
 
--- Solo usuarios autenticados pueden crear reseñas (se asigna su user_id automáticamente)
+-- Solo usuarios autenticados pueden crear reseñas. user_id y user_email se rellenan
+-- desde el JWT y el with check impide que un cliente envíe valores de otra persona.
 create policy "resenas_insert_autenticado"
     on public.resenas for insert
     to authenticated
-    with check (auth.uid() = user_id);
+    with check (
+        auth.uid() = user_id
+        and user_email = coalesce(auth.jwt() ->> 'email', '')
+    );
 
--- Solo el autor puede editar su reseña
+-- Solo el autor puede editar su reseña (y no puede cambiar a nombre de quién figura)
 create policy "resenas_update_autor"
     on public.resenas for update
     to authenticated
-    using (auth.uid() = user_id);
+    using (auth.uid() = user_id)
+    with check (
+        auth.uid() = user_id
+        and user_email = coalesce(auth.jwt() ->> 'email', '')
+    );
 
 -- Solo el autor puede borrar su reseña
 create policy "resenas_delete_autor"
