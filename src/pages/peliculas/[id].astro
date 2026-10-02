@@ -19,6 +19,20 @@ const { data: pelicula, error } = await supabaseServer
 if (error || !pelicula) {
   return Astro.redirect('/');
 }
+
+// Cargar reseñas desde el servidor (SSR — visible en el HTML)
+const { data: resenas } = await supabaseServer
+  .from('resenas')
+  .select('id, user_id, user_email, comentario, calificacion, creada_en')
+  .eq('pelicula_id', Number(id))
+  .order('creada_en', { ascending: false });
+
+const listaResenas = resenas ?? [];
+
+// Calcular promedio de calificación
+const promedio = listaResenas.length > 0
+  ? (listaResenas.reduce((sum, r) => sum + r.calificacion, 0) / listaResenas.length).toFixed(1)
+  : null;
 ---
 
 <Layout title={`${pelicula.nombre} | CineVault`}>
@@ -56,7 +70,336 @@ if (error || !pelicula) {
         ) : (
           <p class="text-gray-500 italic">Sin sinopsis disponible.</p>
         )}
+
+        {/* Promedio de calificación */}
+        {promedio && (
+          <div class="flex items-center gap-2 mt-2">
+            <span class="text-yellow-400 text-lg">★</span>
+            <span class="text-lg font-semibold">{promedio}</span>
+            <span class="text-sm text-gray-400">/ 5 ({listaResenas.length} {listaResenas.length === 1 ? 'reseña' : 'reseñas'})</span>
+          </div>
+        )}
+      </div>
+    </div>
+
+    <!-- Sección de Reseñas -->
+    <div class="mt-14">
+      <h2 class="text-2xl font-bold mb-6">Reseñas</h2>
+
+      <!-- Formulario de reseña (solo visible si hay sesión) -->
+      <div id="resenaFormContainer" class="hidden mb-10">
+        <div class="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6">
+          <h3 id="resenaFormTitle" class="text-lg font-semibold mb-4">Escribe tu reseña</h3>
+          <form id="resenaForm" class="flex flex-col gap-4">
+            <input type="hidden" id="resenaEditId" value="" />
+
+            <!-- Calificación con estrellas -->
+            <div>
+              <label class="text-sm text-gray-400 mb-2 block">Calificación</label>
+              <div id="starRating" class="flex gap-1 text-3xl cursor-pointer select-none">
+                <span data-star="1" class="text-gray-600 hover:text-yellow-400 transition-colors">★</span>
+                <span data-star="2" class="text-gray-600 hover:text-yellow-400 transition-colors">★</span>
+                <span data-star="3" class="text-gray-600 hover:text-yellow-400 transition-colors">★</span>
+                <span data-star="4" class="text-gray-600 hover:text-yellow-400 transition-colors">★</span>
+                <span data-star="5" class="text-gray-600 hover:text-yellow-400 transition-colors">★</span>
+              </div>
+              <input type="hidden" id="fCalificacion" value="0" />
+            </div>
+
+            <label class="flex flex-col gap-1">
+              <span class="text-sm text-gray-400">Comentario</span>
+              <textarea
+                id="fComentario"
+                rows="3"
+                required
+                maxlength="1000"
+                placeholder="¿Qué te pareció la película?"
+                class="resize-none rounded-lg border border-[#2a2a2a] bg-[#0e0e0e] px-4 py-2 focus:outline-none focus:border-[#a855f7]"
+              ></textarea>
+            </label>
+
+            <div class="flex gap-3">
+              <button
+                type="submit"
+                class="rounded-lg bg-[#a855f7] hover:bg-[#c084fc] transition-colors px-6 py-2 font-medium text-white"
+              >
+                Publicar
+              </button>
+              <button
+                type="button"
+                id="btnCancelarResena"
+                class="hidden rounded-lg border border-[#2a2a2a] px-6 py-2 hover:border-gray-400 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+            <p id="resenaMsg" class="text-sm"></p>
+          </form>
+        </div>
+      </div>
+
+      <!-- Mensaje para usuarios no autenticados -->
+      <div id="loginPrompt" class="hidden mb-8 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6 text-center">
+        <p class="text-gray-400">
+          <a href="/login" class="text-[#a855f7] hover:underline">Inicia sesión</a> para dejar tu reseña.
+        </p>
+      </div>
+
+      <!-- Lista de reseñas (renderizadas en el servidor) -->
+      <div id="listaResenas" class="space-y-4">
+        {listaResenas.length === 0 && (
+          <p id="sinResenas" class="text-gray-500 italic">Aún no hay reseñas para esta película.</p>
+        )}
+        {listaResenas.map(r => (
+          <div class="resena-card rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5" data-resena-id={r.id} data-user-id={r.user_id}>
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                  <span class="text-yellow-400 text-sm">
+                    {'★'.repeat(r.calificacion)}{'☆'.repeat(5 - r.calificacion)}
+                  </span>
+                  <span class="text-xs text-gray-500">
+                    {new Date(r.creada_en).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+                <p class="text-sm text-gray-300 leading-relaxed resena-comentario">{r.comentario}</p>
+                <p class="mt-2 text-xs text-gray-500">— {r.user_email || 'Usuario anónimo'}</p>
+              </div>
+              <!-- Botones de acción (se muestran solo para el autor vía JS) -->
+              <div class="resena-acciones hidden shrink-0 flex gap-2">
+                <button
+                  class="btn-editar-resena rounded-md bg-[#2a2a2a] px-3 py-1 text-xs hover:bg-[#3a3a3a] transition-colors"
+                  data-id={r.id}
+                  data-comentario={r.comentario}
+                  data-calificacion={r.calificacion}
+                >
+                  Editar
+                </button>
+                <button
+                  class="btn-eliminar-resena rounded-md bg-red-900/50 px-3 py-1 text-xs hover:bg-red-700 transition-colors"
+                  data-id={r.id}
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Modal de confirmación de eliminación -->
+    <div
+      id="modalEliminarResena"
+      class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70"
+    >
+      <div class="mx-4 w-full max-w-sm rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-8 text-center shadow-2xl">
+        <h3 class="mb-2 text-lg font-semibold">¿Eliminar reseña?</h3>
+        <p class="mb-6 text-sm text-gray-400">Esta acción no se puede deshacer.</p>
+        <div class="flex justify-center gap-4">
+          <button
+            id="btnConfirmarEliminarResena"
+            class="rounded-lg bg-red-600 hover:bg-red-500 px-6 py-2 font-medium text-white transition-colors"
+          >
+            Eliminar
+          </button>
+          <button
+            id="btnCancelarEliminarResena"
+            class="rounded-lg border border-[#2a2a2a] px-6 py-2 hover:border-gray-400 transition-colors"
+          >
+            Cancelar
+          </button>
+        </div>
       </div>
     </div>
   </section>
 </Layout>
+
+<script>
+  import { supabase } from '../../lib/supabase-browser';
+
+  async function init() {
+    const formContainer  = document.getElementById('resenaFormContainer');
+    const loginPrompt    = document.getElementById('loginPrompt');
+    const form           = document.getElementById('resenaForm') as HTMLFormElement | null;
+    const formTitle      = document.getElementById('resenaFormTitle');
+    const editIdInput    = document.getElementById('resenaEditId') as HTMLInputElement | null;
+    const fCalificacion  = document.getElementById('fCalificacion') as HTMLInputElement | null;
+    const fComentario    = document.getElementById('fComentario') as HTMLTextAreaElement | null;
+    const btnCancelar    = document.getElementById('btnCancelarResena');
+    const resenaMsg      = document.getElementById('resenaMsg');
+    const starContainer  = document.getElementById('starRating');
+    const modal          = document.getElementById('modalEliminarResena');
+    const btnConfirmar   = document.getElementById('btnConfirmarEliminarResena');
+    const btnCancelModal = document.getElementById('btnCancelarEliminarResena');
+
+    if (!formContainer || !loginPrompt || !form || !formTitle || !editIdInput
+        || !fCalificacion || !fComentario || !btnCancelar || !resenaMsg
+        || !starContainer || !modal || !btnConfirmar || !btnCancelModal) return;
+
+    // ─── Verificar sesión ────────────────────────────────────────────────
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session) {
+      formContainer.classList.remove('hidden');
+      // Mostrar botones de editar/eliminar solo en las reseñas del usuario actual
+      document.querySelectorAll('.resena-card').forEach(card => {
+        const userId = (card as HTMLElement).dataset.userId;
+        if (userId === session.user.id) {
+          const acciones = card.querySelector('.resena-acciones');
+          if (acciones) acciones.classList.remove('hidden');
+        }
+      });
+    } else {
+      loginPrompt.classList.remove('hidden');
+    }
+
+    // ─── Sistema de estrellas ────────────────────────────────────────────
+    let calificacionActual = 0;
+    const estrellas = starContainer.querySelectorAll<HTMLSpanElement>('[data-star]');
+
+    function actualizarEstrellas(valor: number) {
+      estrellas.forEach(s => {
+        const n = Number(s.dataset.star);
+        s.className = n <= valor
+          ? 'text-yellow-400 hover:text-yellow-400 transition-colors'
+          : 'text-gray-600 hover:text-yellow-400 transition-colors';
+      });
+    }
+
+    estrellas.forEach(s => {
+      s.addEventListener('click', () => {
+        calificacionActual = Number(s.dataset.star);
+        fCalificacion.value = String(calificacionActual);
+        actualizarEstrellas(calificacionActual);
+      });
+    });
+
+    // ─── Obtener pelicula_id de la URL ───────────────────────────────────
+    const pathParts = window.location.pathname.split('/');
+    const peliculaId = Number(pathParts[pathParts.length - 1]);
+
+    // ─── Enviar formulario (crear o editar) ──────────────────────────────
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      resenaMsg.textContent = '';
+
+      const cal = Number(fCalificacion.value);
+      if (cal < 1 || cal > 5) {
+        resenaMsg.textContent = 'Selecciona una calificación de 1 a 5 estrellas.';
+        resenaMsg.className = 'text-sm text-red-400';
+        return;
+      }
+
+      const comentario = fComentario.value.trim();
+      if (!comentario) {
+        resenaMsg.textContent = 'El comentario no puede estar vacío.';
+        resenaMsg.className = 'text-sm text-red-400';
+        return;
+      }
+
+      if (editIdInput.value) {
+        // ─── Editar reseña existente ─────────────────────────────────────
+        const { error } = await supabase
+          .from('resenas')
+          .update({ comentario, calificacion: cal })
+          .eq('id', Number(editIdInput.value));
+
+        if (error) {
+          resenaMsg.textContent = 'Error al editar: ' + error.message;
+          resenaMsg.className = 'text-sm text-red-400';
+        } else {
+          // Recargar la página para refrescar las reseñas renderizadas en SSR
+          window.location.reload();
+        }
+      } else {
+        // ─── Crear reseña nueva ──────────────────────────────────────────
+        const userEmail = session?.user?.email ?? '';
+        const { error } = await supabase
+          .from('resenas')
+          .insert({
+            pelicula_id: peliculaId,
+            comentario,
+            calificacion: cal,
+            user_email: userEmail,
+          });
+
+        if (error) {
+          resenaMsg.textContent = 'Error al crear: ' + error.message;
+          resenaMsg.className = 'text-sm text-red-400';
+        } else {
+          window.location.reload();
+        }
+      }
+    });
+
+    // ─── Botón cancelar edición ──────────────────────────────────────────
+    btnCancelar.addEventListener('click', () => {
+      resetForm();
+    });
+
+    function resetForm() {
+      formTitle.textContent = 'Escribe tu reseña';
+      editIdInput.value = '';
+      fComentario.value = '';
+      fCalificacion.value = '0';
+      calificacionActual = 0;
+      actualizarEstrellas(0);
+      btnCancelar.classList.add('hidden');
+      resenaMsg.textContent = '';
+    }
+
+    // ─── Botones de editar ───────────────────────────────────────────────
+    document.querySelectorAll<HTMLButtonElement>('.btn-editar-resena').forEach(btn => {
+      btn.addEventListener('click', () => {
+        formTitle.textContent = 'Editar reseña';
+        editIdInput.value = btn.dataset.id ?? '';
+        fComentario.value = btn.dataset.comentario ?? '';
+        const cal = Number(btn.dataset.calificacion ?? 0);
+        calificacionActual = cal;
+        fCalificacion.value = String(cal);
+        actualizarEstrellas(cal);
+        btnCancelar.classList.remove('hidden');
+        resenaMsg.textContent = '';
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    // ─── Botones de eliminar ─────────────────────────────────────────────
+    let eliminarResenaId: number | null = null;
+
+    document.querySelectorAll<HTMLButtonElement>('.btn-eliminar-resena').forEach(btn => {
+      btn.addEventListener('click', () => {
+        eliminarResenaId = Number(btn.dataset.id);
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      });
+    });
+
+    function cerrarModal() {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      eliminarResenaId = null;
+    }
+
+    btnCancelModal.addEventListener('click', cerrarModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) cerrarModal(); });
+
+    btnConfirmar.addEventListener('click', async () => {
+      if (!eliminarResenaId) return;
+      const { error } = await supabase
+        .from('resenas')
+        .delete()
+        .eq('id', eliminarResenaId);
+      cerrarModal();
+      if (error) {
+        resenaMsg.textContent = 'Error al eliminar: ' + error.message;
+        resenaMsg.className = 'text-sm text-red-400';
+      } else {
+        window.location.reload();
+      }
+    });
+  }
+
+  document.addEventListener('astro:page-load', init);
+</script>
